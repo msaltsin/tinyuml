@@ -580,12 +580,12 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
   /**
    * Undoes the last operation.
    */
-  public void undo() { undoManager.undo(); }
+  public void undo() { undoManager.undo(); notifyStateChanged(); }
 
   /**
    * Redoes the last operation.
    */
-  public void redo() { undoManager.redo(); }
+  public void redo() { undoManager.redo(); notifyStateChanged(); }
 
   /**
    * Rescales the view.
@@ -747,6 +747,7 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
     // We need to run() after notifying the UndoManager in order to ensure
     // correct menu behaviour
     command.run();
+    notifyStateChanged();
   }
 
   /**
@@ -844,6 +845,7 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
         umlclass.setMethods(dialog.getMethods());
         umlclass.setAttributes(dialog.getAttributes());
         umlclass.setStereotypes(dialog.getStereotypes());
+        notifyStateChanged();
         redraw();
       }
     } else if (element instanceof Association) {

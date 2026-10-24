@@ -23,6 +23,7 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
+import java.awt.GridLayout;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -46,14 +47,14 @@ import javax.swing.JTabbedPane;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import org.tinyuml.draw.Label;
-import org.tinyuml.draw.DiagramElement;
-import org.tinyuml.draw.LabelChangeListener;
 import org.tinyuml.draw.AbstractCompositeNode;
 import org.tinyuml.umldraw.shared.NoteElement;
 import org.tinyuml.umldraw.structure.ClassElement;
 import org.tinyuml.umldraw.structure.ComponentElement;
 import org.tinyuml.umldraw.structure.PackageElement;
+import org.tinyuml.draw.Label;
+import org.tinyuml.draw.DiagramElement;
+import org.tinyuml.draw.LabelChangeListener;
 import org.tinyuml.model.UmlModel;
 import org.tinyuml.util.AppCommandListener;
 import org.tinyuml.umldraw.structure.StructureDiagram;
@@ -63,6 +64,7 @@ import org.tinyuml.ui.commands.ModelWriter;
 import org.tinyuml.ui.commands.PngExporter;
 import org.tinyuml.ui.commands.SvgExporter;
 import org.tinyuml.ui.diagram.DiagramEditor;
+import org.tinyuml.ui.diagram.SelectionStatus;
 import org.tinyuml.ui.diagram.EditorMouseEvent;
 import org.tinyuml.ui.diagram.EditorStateListener;
 import org.tinyuml.ui.diagram.SelectionListener;
@@ -85,8 +87,8 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
   private JTabbedPane tabbedPane;
   private JLabel coordLabel = new JLabel("    ");
   private JLabel memLabel = new JLabel("    ");
-  // RF-001: label de la barra de estado que muestra el conteo de elementos
-  private JLabel countLabel = new JLabel("    ");
+  private JLabel countLabel = new JLabel();
+  private JLabel selectionLabel = new JLabel();
   private UmlModel umlModel;
   private DiagramEditor currentEditor;
   private transient Timer timer = new Timer();
@@ -189,6 +191,21 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
   private JTabbedPane createEditorArea() {
     tabbedPane = new JTabbedPane();
     tabbedPane.setPreferredSize(new Dimension(800, 600));
+    tabbedPane.addChangeListener(new javax.swing.event.ChangeListener() {
+      public void stateChanged(javax.swing.event.ChangeEvent event) {
+        JPanel selected = (JPanel) tabbedPane.getSelectedComponent();
+        currentEditor = selected == null ? null :
+          (DiagramEditor) selected.getClientProperty("diagramEditor");
+        if (selected != null) {
+          staticToolbarManager = (StaticStructureEditorToolbarManager)
+            selected.getClientProperty("diagramToolbar");
+          updateMenuAndToolbars(currentEditor);
+          selectionStateChanged();
+        } else {
+          updateSelectionStatus();
+        }
+      }
+    });
     return tabbedPane;
   }
 
@@ -198,23 +215,26 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
    * @param diagram the diagram
    */
   private void createEditor(StructureDiagram diagram) {
-    currentEditor = new DiagramEditor(this, diagram);
-    currentEditor.addEditorStateListener(this);
-    currentEditor.addSelectionListener(this);
-    currentEditor.addAppCommandListener(editorDispatcher);
-    currentEditor.addAppCommandListener(this);
-    // RF-001: mostrar el conteo inicial del diagrama (00 si esta vacio)
-    updateElementCount(currentEditor);
-    JScrollPane spane = new JScrollPane(currentEditor);
+    DiagramEditor editor = new DiagramEditor(this, diagram);
+    diagramEditors.add(editor);
+    editor.addEditorStateListener(this);
+    editor.addSelectionListener(this);
+    editor.addAppCommandListener(editorDispatcher);
+    editor.addAppCommandListener(this);
+    JScrollPane spane = new JScrollPane(editor);
     JPanel editorPanel = new JPanel(new BorderLayout());
     spane.getVerticalScrollBar().setUnitIncrement(10);
     spane.getHorizontalScrollBar().setUnitIncrement(10);
-    staticToolbarManager = new StaticStructureEditorToolbarManager();
-    JToolBar toolbar = staticToolbarManager.getToolbar();
-    staticToolbarManager.addCommandListener(editorDispatcher);
+    StaticStructureEditorToolbarManager diagramToolbar = new StaticStructureEditorToolbarManager();
+    JToolBar toolbar = diagramToolbar.getToolbar();
+    diagramToolbar.addCommandListener(editorDispatcher);
+    editorPanel.putClientProperty("diagramEditor", editor);
+    editorPanel.putClientProperty("diagramToolbar", diagramToolbar);
     editorPanel.add(spane, BorderLayout.CENTER);
     editorPanel.add(toolbar, BorderLayout.NORTH);
     final Component comp = tabbedPane.add(diagram.getLabelText(), editorPanel);
+    tabbedPane.setSelectedComponent(comp);
+    updateSelectionStatus();
     diagram.addNameLabelChangeListener(new LabelChangeListener() {
       /** {@inheritDoc} */
       public void labelTextChanged(Label label) {
@@ -249,10 +269,17 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
    */
   private void installStatusbar() {
     JPanel statusbar = new JPanel(new BorderLayout());
-    statusbar.add(coordLabel, BorderLayout.WEST);
-    statusbar.add(memLabel, BorderLayout.EAST);
-    // RF-001: el conteo va en el centro de la barra de estado
-    statusbar.add(countLabel, BorderLayout.CENTER);
+    countLabel.setName("diagramCounts");
+    selectionLabel.setName("diagramSelection");
+    JPanel summaries = new JPanel(new GridLayout(2, 1));
+    summaries.setBorder(javax.swing.BorderFactory.createEmptyBorder(3, 7, 3, 7));
+    summaries.add(countLabel);
+    summaries.add(selectionLabel);
+    statusbar.add(summaries, BorderLayout.CENTER);
+    JPanel runtime = new JPanel(new BorderLayout());
+    runtime.add(coordLabel, BorderLayout.WEST);
+    runtime.add(memLabel, BorderLayout.EAST);
+    statusbar.add(runtime, BorderLayout.SOUTH);
     getContentPane().add(statusbar, BorderLayout.SOUTH);
   }
 
@@ -263,6 +290,36 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
    */
   private String getResourceString(String property) {
     return ApplicationResources.getInstance().getString(property);
+  }
+
+  private void updateElementCount(DiagramEditor editor) {
+    // posiciones: 0 = Package, 1 = Class, 2 = Component, 3 = Note
+    int[] counts = new int[4];
+    countElements(editor.getDiagram(), counts);
+    int total = counts[0] + counts[1] + counts[2] + counts[3];
+    countLabel.setText(String.format(
+      "Total Items: %02d | Package: %02d | Class: %02d | Component: %02d"
+      + " | Note: %02d", total, counts[0], counts[1], counts[2], counts[3]));
+  }
+
+  private void countElements(AbstractCompositeNode node, int[] counts) {
+    for (DiagramElement element : node.getChildren()) {
+      if (element instanceof PackageElement) counts[0]++;
+      else if (element instanceof ClassElement) counts[1]++;
+      else if (element instanceof ComponentElement) counts[2]++;
+      else if (element instanceof NoteElement) counts[3]++;
+      if (element instanceof AbstractCompositeNode) {
+        countElements((AbstractCompositeNode) element, counts);
+      }
+    }
+  }
+
+  private void updateSelectionStatus() {
+    if (currentEditor != null) updateElementCount(currentEditor);
+    else countLabel.setText("Total Items: 00 | Package: 00 | Class: 00 | Component: 00 | Note: 00");
+    selectionLabel.setText(currentEditor == null ? "Sin selecci\u00f3n" :
+      SelectionStatus.describeSelection(currentEditor.getDiagram(), currentEditor.getSelectedElements()));
+    selectionLabel.setToolTipText(selectionLabel.getText());
   }
 
   // ************************************************************************
@@ -292,11 +349,10 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
    * {@inheritDoc}
    */
   public void elementAdded(DiagramEditor editor) {
+    if (editor != currentEditor) return;
     // spring loading is implemented here
     staticToolbarManager.doClick("SELECT_MODE");
     updateMenuAndToolbars(editor);
-    // RF-001: recalcular el conteo
-    updateElementCount(editor);
   }
 
   /**
@@ -304,48 +360,6 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
    */
   public void elementRemoved(DiagramEditor editor) {
     updateMenuAndToolbars(editor);
-    // RF-001: recalcular el conteo
-    updateElementCount(editor);
-  }
-
-  // ************************************************************************
-  // **** RF-001: conteo de elementos por categoria
-  // *****************************************
-
-  /**
-   * Cuenta los elementos del diagrama del editor indicado y muestra el
-   * resultado en la barra de estado. Las relaciones no se cuentan.
-   * @param editor el editor cuyo diagrama se cuenta
-   */
-  private void updateElementCount(DiagramEditor editor) {
-    // posiciones: 0 = Package, 1 = Class, 2 = Component, 3 = Note
-    int[] counts = new int[4];
-    countElements(editor.getDiagram(), counts);
-    int total = counts[0] + counts[1] + counts[2] + counts[3];
-    countLabel.setText(String.format(
-      "Total Items: %02d | Package: %02d | Class: %02d | Component: %02d"
-      + " | Note: %02d", total, counts[0], counts[1], counts[2], counts[3]));
-  }
-
-  /**
-   * Recorre recursivamente los hijos del nodo y suma cada elemento en su
-   * categoria. Es recursivo porque un elemento puede estar dentro de otro
-   * (por ejemplo, una clase dentro de un paquete). Las relaciones
-   * (Association, Dependency, Inheritance, NoteConnection) no coinciden con
-   * ninguna categoria y quedan fuera.
-   * @param node el nodo cuyos hijos se recorren
-   * @param counts el arreglo de contadores por categoria
-   */
-  private void countElements(AbstractCompositeNode node, int[] counts) {
-    for (DiagramElement element : node.getChildren()) {
-      if (element instanceof PackageElement) counts[0]++;
-      else if (element instanceof ClassElement) counts[1]++;
-      else if (element instanceof ComponentElement) counts[2]++;
-      else if (element instanceof NoteElement) counts[3]++;
-      if (element instanceof AbstractCompositeNode) {
-        countElements((AbstractCompositeNode) element, counts);
-      }
-    }
   }
 
   /**
@@ -354,6 +368,8 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
    * @param editor the editor
    */
   private void updateMenuAndToolbars(DiagramEditor editor) {
+    if (editor == null || editor != currentEditor) return;
+    updateSelectionStatus();
     menumanager.enableMenuItem("UNDO", editor.canUndo());
     menumanager.enableMenuItem("REDO", editor.canRedo());
     toolbarmanager.enableButton("UNDO", editor.canUndo());
@@ -368,7 +384,9 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
    * {@inheritDoc}
    */
   public void selectionStateChanged() {
-    boolean hasSelection = getCurrentEditor().getSelectedElements().size() > 0;
+    updateSelectionStatus();
+    boolean hasSelection = currentEditor != null &&
+      !SelectionStatus.selectedItems(currentEditor.getDiagram(), currentEditor.getSelectedElements()).isEmpty();
    
     menumanager.enableMenuItem("CUT", hasSelection);
     menumanager.enableMenuItem("COPY", hasSelection);
@@ -477,8 +495,11 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
       StructureDiagram diagram = new StructureDiagram(umlModel);
       umlModel.addDiagram(diagram);
       diagram.setLabelText("Class diagram 1");
+      diagramEditors.clear();
       tabbedPane.removeAll();
       createEditor(diagram);
+      currentFile = null;
+      updateFrameTitle();
     }
   }
 
@@ -583,8 +604,12 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
         try {
           currentFile = fileChooser.getSelectedFile();
           umlModel = ModelReader.getInstance().readModel(currentFile);
+          diagramEditors.clear();
           tabbedPane.removeAll();
-          createEditor((StructureDiagram) umlModel.getDiagrams().get(0));
+          for (org.tinyuml.model.UmlDiagram diagram : umlModel.getDiagrams()) {
+            createEditor((StructureDiagram) diagram);
+          }
+          if (tabbedPane.getTabCount() > 0) tabbedPane.setSelectedIndex(0);
           updateFrameTitle();
         } catch (IOException ex) {
           JOptionPane.showMessageDialog(this, ex.getMessage(),
