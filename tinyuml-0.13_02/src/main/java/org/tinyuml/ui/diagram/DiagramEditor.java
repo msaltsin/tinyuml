@@ -42,6 +42,7 @@ import javax.swing.AbstractAction;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.JViewport;
 import javax.swing.KeyStroke;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
@@ -205,10 +206,11 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
    * This also influences the scroll pane which the component is contained in.
    */
   private void setToDiagramSize() {
-    setPreferredSize(new Dimension(
-      (int) (diagram.getSize().getWidth() + MARGIN_RIGHT + MARGIN_LEFT),
-      (int) (diagram.getSize().getHeight() + MARGIN_BOTTOM + MARGIN_TOP)));
-    invalidate();
+    Dimension canvas = getTotalCanvasSize();
+    double factor = scaling.getScaleFactor();
+    setPreferredSize(new Dimension((int) Math.ceil(canvas.width * factor),
+      (int) Math.ceil(canvas.height * factor)));
+    revalidate();
   }
 
   /**
@@ -256,6 +258,7 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
     if (elements.size() > 1 && !confirmDeleteSelection(elements.size())) return;
     execute(new DeleteElementCommand(this, elements));
   }
+  /** One confirmation path for the Delete key, menus, toolbar and cut (RF-004). */
   protected boolean confirmDeleteSelection(int count) {
     org.tinyuml.util.ApplicationResources resources =
       org.tinyuml.util.ApplicationResources.getInstance();
@@ -338,7 +341,7 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
    * otherwise
    */
   private void paintComponent(Graphics g, Rectangle bounds, boolean toScreen) {
-    Graphics2D g2d = (Graphics2D) g;
+    Graphics2D g2d = (Graphics2D) g.create();
     setRenderingHints(g2d);
     if (scaling.getScaleFactor() != 1.0) {
       g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
@@ -349,15 +352,21 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
 
     boolean gridVisible = diagram.isGridVisible();
     Color background = Color.GRAY;
-    if (toScreen) {
-      // Scaling is only interesting if rendering to screen
-      scaleDiagram(g2d);
-    } else {
+    if (!toScreen) {
       diagram.setGridVisible(false);
       background = Color.WHITE;
     }
-    clearScreen(g, bounds, background);
-    drawingContext.setGraphics2D(g2d, bounds);
+    clearScreen(g2d, bounds, background);
+    Rectangle modelBounds = new Rectangle(bounds);
+    if (toScreen) {
+      scaleDiagram(g2d);
+      double factor = scaling.getScaleFactor();
+      modelBounds.setBounds((int) Math.floor(bounds.x / factor),
+        (int) Math.floor(bounds.y / factor),
+        (int) Math.ceil(bounds.width / factor) + 1,
+        (int) Math.ceil(bounds.height / factor) + 1);
+    }
+    drawingContext.setGraphics2D(g2d, modelBounds);
     diagram.draw(drawingContext);
     // Draw user interface specific elements (e.g. selections)
     if (toScreen) {
@@ -365,6 +374,7 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
     }
     restoreRenderingHints(g2d);
     diagram.setGridVisible(gridVisible);
+    g2d.dispose();
   }
 
   /**
@@ -605,7 +615,24 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
    */
   public void setScaling(Scaling aScaling) {
     scaling = aScaling;
+    setToDiagramSize();
     repaint();
+  }
+
+  public Scaling getScaling() { return scaling; }
+
+  /** Fits the full diagram canvas without changing any saved geometry (RF-005). */
+  public void fitToWindow() {
+    if (!(getParent() instanceof JViewport)) return;
+    JViewport viewport = (JViewport) getParent();
+    Dimension available = viewport.getExtentSize();
+    if (available.width <= 0 || available.height <= 0) return;
+    Dimension canvas = getTotalCanvasSize();
+    double factor = Math.min(1.0, Math.min(
+      (double) Math.max(1, available.width - 16) / canvas.width,
+      (double) Math.max(1, available.height - 16) / canvas.height));
+    setScaling(Scaling.forFactor(factor));
+    viewport.setViewPosition(new java.awt.Point(0, 0));
   }
 
   /**

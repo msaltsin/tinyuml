@@ -47,4 +47,12 @@ public final class Scaling {
    * @return the scaling factor
    */
   public double getScaleFactor() { return scaleFactor; }
+
+  /** Creates a view-only scale, including values below the preset 50 percent. */
+  public static Scaling forFactor(double factor) {
+    if (Double.isNaN(factor) || Double.isInfinite(factor) || factor <= 0) {
+      throw new IllegalArgumentException("Scale must be finite and positive");
+    }
+    return new Scaling(factor);
+  }
 }

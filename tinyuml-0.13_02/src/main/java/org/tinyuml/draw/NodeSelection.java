@@ -172,7 +172,10 @@ public class NodeSelection implements Selection, NodeChangeListener {
    * @param y the y coordinate
    */
   private void moveSelectedNode(double x, double y) {
-    DiagramElement elem = editor.getDiagram().getChildAt(x, y);
+    Diagram diagram = editor.getDiagram();
+    // The canvas can be resized, but must never be moved or reparented.
+    if (node == diagram) return;
+    DiagramElement elem = diagram.getChildAt(x, y);
     if (isDraggedToANewParent(elem)) {
       reparentNode((CompositeNode) elem);
     } else if (isDraggedOutOfParent(elem)) {

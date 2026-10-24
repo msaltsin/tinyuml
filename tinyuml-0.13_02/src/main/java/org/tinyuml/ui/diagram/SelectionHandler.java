@@ -104,9 +104,11 @@ public class SelectionHandler implements EditorMode {
       editor.editLabel(editor.getDiagram().getLabelAt(mx, my));
     } else {
       if (element == NullElement.getInstance()) {
-        element = editor.getDiagram();
+        currentSelection = editor.getDiagram().contains(mx, my) ?
+          editor.getDiagram().getSelection(editor) : NullSelection.getInstance();
+      } else {
+        currentSelection = element.getSelection(editor);
       }
-      currentSelection = element.getSelection(editor);
     }
     editor.redraw();
     notifyListeners();
@@ -176,7 +178,9 @@ public class SelectionHandler implements EditorMode {
       // select the element
       return element.getSelection(editor);
     }
-    return editor.getDiagram().getSelection(editor);
+    Selection background = editor.getDiagram().getSelection(editor);
+    // Preserve the canvas resize handles; the gray margin is not draggable.
+    return background.contains(mx, my) ? background : NullSelection.getInstance();
   }
 
   /**
