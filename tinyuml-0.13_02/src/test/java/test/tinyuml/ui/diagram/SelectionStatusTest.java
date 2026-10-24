@@ -9,6 +9,7 @@ import org.tinyuml.model.ElementType;
 import org.tinyuml.model.RelationType;
 import org.tinyuml.model.UmlModelImpl;
 import org.tinyuml.ui.diagram.SelectionStatus;
+import org.tinyuml.umldraw.shared.NoteElement;
 import org.tinyuml.umldraw.shared.UmlNode;
 import org.tinyuml.umldraw.structure.PackageElement;
 import org.tinyuml.umldraw.structure.StructureDiagram;
@@ -16,7 +17,11 @@ import org.tinyuml.umldraw.structure.StructureDiagram;
 public class SelectionStatusTest extends TestCase {
   private StructureDiagram diagram;
 
-  protected void setUp() { diagram = new StructureDiagram(new UmlModelImpl()); }
+  protected void setUp() {
+    // Otros tests modifican el prototipo compartido de las notas.
+    NoteElement.getPrototype().setLabelText("");
+    diagram = new StructureDiagram(new UmlModelImpl());
+  }
 
   private UmlNode add(ElementType type) {
     UmlNode node = diagram.getElementFactory().createNode(type);
