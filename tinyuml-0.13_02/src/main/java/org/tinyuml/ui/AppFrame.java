@@ -317,8 +317,8 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
   private void updateSelectionStatus() {
     if (currentEditor != null) updateElementCount(currentEditor);
     else countLabel.setText("Total Items: 00 | Package: 00 | Class: 00 | Component: 00 | Note: 00");
-    selectionLabel.setText(currentEditor == null ? "Sin selecci\u00f3n" :
-      SelectionStatus.describeSelection(currentEditor.getDiagram(), currentEditor.getSelectedElements()));
+    selectionLabel.setText(currentEditor == null ? "Sin selecci\u00f3n | Seleccionados: 00" :
+      SelectionStatus.formatSelection(currentEditor.getDiagram(), currentEditor.getSelectedElements()));
     selectionLabel.setToolTipText(selectionLabel.getText());
   }
 

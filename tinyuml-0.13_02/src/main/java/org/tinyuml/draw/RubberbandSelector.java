@@ -68,6 +68,7 @@ public class RubberbandSelector implements Selection {
    */
   public void startDragging(double xcoord, double ycoord) {
     anchor.setLocation(xcoord, ycoord);
+    current.setLocation(anchor);
     isDragging = true;
   }
 

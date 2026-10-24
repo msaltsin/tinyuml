@@ -218,7 +218,8 @@ public class AbstractCompositeNodeTest extends MockObjectTestCase {
     // first case: includes the whole
     bounds.setRect(-10, -10, 250, 250);
     compositeNode.getChildrenInSpecifiedBounds(bounds, collection);
-    assertEquals(4, collection.size());
+    assertEquals(3, collection.size());
+    assertFalse(collection.contains(child3_1));
     // second case: outside
     collection = new ArrayList<DiagramElement>();
     bounds.setRect(300, 200, 250, 250);
@@ -239,14 +240,14 @@ public class AbstractCompositeNodeTest extends MockObjectTestCase {
     compositeNode.getChildrenInSpecifiedBounds(bounds, collection);
     assertEquals(0, collection.size());
     
-    // fifth case: intersect a  child that has children, at least one of the
-    // child's children is intersected
+    // fifth case: intersect a child with descendants; only the direct child
+    // participates in this container's selection
     collection = new ArrayList<DiagramElement>();
     bounds.setRect(70, 70, 10, 10); // from (70, 70) to (80, 80)
     compositeNode.getChildrenInSpecifiedBounds(bounds, collection);
-    assertEquals(2, collection.size());
+    assertEquals(1, collection.size());
     assertTrue(collection.contains(child3));
-    assertTrue(collection.contains(child3_1));
+    assertFalse(collection.contains(child3_1));
     
     // sixth case: intersects a child that has children, no children are
     // intersected

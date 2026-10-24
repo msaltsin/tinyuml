@@ -94,6 +94,7 @@ public class MultiSelection implements Selection {
       maxy = Math.max(maxy, elemBounds.getY() + elemBounds.getHeight());
     }
     bounds.setRect(minx, miny, maxx - minx, maxy - miny);
+    tmpPos.setLocation(minx, miny);
   }
 
   /**
@@ -103,15 +104,17 @@ public class MultiSelection implements Selection {
     List<Command> moveOperations = new ArrayList<Command>();
     double transx = tmpPos.getX() - bounds.getX();
     double transy = tmpPos.getY() - bounds.getY();
-    for (DiagramElement element : elements) {
-      if (element instanceof Node) {
-        addMoveNodeOperation(moveOperations, (Node) element, transx, transy);
-      } else if (element instanceof Connection) {
-        addTranslateConnectionOperations(moveOperations, (Connection) element,
-          transx, transy);
+    if (transx != 0 || transy != 0) {
+      for (DiagramElement element : elements) {
+        if (element instanceof Node) {
+          addMoveNodeOperation(moveOperations, (Node) element, transx, transy);
+        } else if (element instanceof Connection) {
+          addTranslateConnectionOperations(moveOperations, (Connection) element,
+            transx, transy);
+        }
       }
+      editor.moveElements(moveOperations.toArray(new Command[0]));
     }
-    editor.moveElements(moveOperations.toArray(new Command[0]));
     updateDimensions();
     isDragging = false;
   }

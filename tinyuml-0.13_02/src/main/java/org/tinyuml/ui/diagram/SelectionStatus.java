@@ -45,6 +45,12 @@ public final class SelectionStatus {
     return information;
   }
 
+  public static String formatSelection(StructureDiagram diagram,
+      Collection<DiagramElement> selection) {
+    return describeSelection(diagram, selection) + String.format(Locale.ROOT,
+      " | Seleccionados: %02d", selectedItems(diagram, selection).size());
+  }
+
   private static String category(DiagramElement element) {
     if (element instanceof PackageElement) return "Package";
     if (element instanceof ClassElement) return "Class";

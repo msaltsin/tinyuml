@@ -168,11 +168,6 @@ implements CompositeNode {
       for (DiagramElement child : getChildren()) {
         if (child.intersects(bounds)) {
           resultCollection.add(child);
-          // Recursively ask the child
-          if (child instanceof CompositeNode) {
-            ((CompositeNode) child).getChildrenInSpecifiedBounds(bounds,
-              resultCollection);
-          }
         }
       }
     }

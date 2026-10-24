@@ -32,9 +32,9 @@ import java.util.Collection;
 public interface CompositeNode extends Node, CompositeElement {
 
   /**
-   * Determines all the children that lie in the specified bounds and delegates
-   * to the method to the child composites if necessary. The combined results
-   * are stored in the resultCollection.
+   * Determines the direct children that intersect the specified bounds.
+   * Descendants are not added separately, so selecting a container does not
+   * also select the elements that already move with that container.
    * @param bounds the bounds
    * @param resultCollection the resulting collection
    */
