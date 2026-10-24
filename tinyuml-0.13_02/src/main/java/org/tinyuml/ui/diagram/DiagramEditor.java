@@ -41,6 +41,7 @@ import java.util.List;
 import javax.swing.AbstractAction;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
@@ -250,9 +251,20 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
    * Removes the current selection.
    */
   public void deleteSelection() {
-    Collection<DiagramElement> elements = getSelectedElements();
+    List<DiagramElement> elements = SelectionStatus.selectedItems(diagram, getSelectedElements());
+    if (elements.isEmpty()) return;
+    if (elements.size() > 1 && !confirmDeleteSelection(elements.size())) return;
     execute(new DeleteElementCommand(this, elements));
   }
+  protected boolean confirmDeleteSelection(int count) {
+    org.tinyuml.util.ApplicationResources resources =
+      org.tinyuml.util.ApplicationResources.getInstance();
+    return JOptionPane.showConfirmDialog(frame,
+      String.format(resources.getString("confirm.delete.message"), count),
+      resources.getString("confirm.delete.title"), JOptionPane.OK_CANCEL_OPTION,
+      JOptionPane.WARNING_MESSAGE) == JOptionPane.OK_OPTION;
+  }
+
   /**
    * Pastes into this diagram the handed Elements
    */
