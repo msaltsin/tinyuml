@@ -11,7 +11,15 @@ NOTE: At this moment, it is not recommended to save any important data.
 
 Platform
 --------
-At least Java SE 6 is required to compile and execute the application.
+Java SE 8 or later is required. The build has been verified with JDK 17.
+
+Building the software
+---------------------
+Run mvn clean package in this directory, or run compilar.cmd from the parent
+directory on Windows. The executable jar, including its dependencies, is
+generated at target/tinyuml-0.13_02.jar.
+
+Run compilar.cmd -Ejecutar from the parent directory to build and launch.
 
 Starting the software
 ---------------------
@@ -19,9 +27,9 @@ The application is delivered as an executable jar file, so on many systems,
 a double click on the tinyuml.jar file should be sufficient.
 Alternatively, it can be started using
 
-java -jar tinyuml.jar
+java -jar target/tinyuml-0.13_02.jar
 
-in the distribution directory
+in this directory after building
 
 Changes in Release 0.13_02 5/09/2007
 ------------------------------------

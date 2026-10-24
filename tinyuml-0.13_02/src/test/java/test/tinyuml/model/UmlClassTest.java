@@ -140,7 +140,7 @@ public class UmlClassTest extends MockObjectTestCase {
       stereotypes.add(stereo);
     }
     
-    UmlClass original = UmlClass.getPrototype();
+    UmlClass original = (UmlClass) UmlClass.getPrototype().clone();
     original.setAttributes(attributes);
     original.setMethods(methods);
     original.setStereotypes(stereotypes);

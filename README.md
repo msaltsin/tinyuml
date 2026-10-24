@@ -1,3 +1,28 @@
+Compilar en Windows
+------------------
+Desde esta carpeta, ejecuta:
+
+```powershell
+.\compilar.cmd
+```
+
+Para compilar y abrir TinyUML:
+
+```powershell
+.\compilar.cmd -Ejecutar
+```
+
+El script busca Java y Maven en el PATH y en las instalaciones locales de
+IntelliJ. La compilacion genera `tinyuml-0.13_02/target/tinyuml-0.13_02.jar`
+con las dependencias incluidas y ejecuta las pruebas. Se ha verificado con
+JDK 17 y 21, y Maven 3.9.9. La primera compilacion puede descargar dependencias.
+
+Con Java y Maven configurados tambien puedes usar `mvn clean package` desde
+`tinyuml-0.13_02`, y abrir el resultado con
+`java -jar target/tinyuml-0.13_02.jar`.
+
+En Eclipse, importa `tinyuml-0.13_02` como proyecto Maven y actualiza el
+proyecto con Maven > Update Project. Selecciona un JDK instalado, como JDK 17.
 
 
 The current version is 0.13_02
@@ -11,7 +36,7 @@ NOTE: At this moment, it is not recommended to save any important data.
 
 Platform
 --------
-At least Java SE 6 is required to compile and execute the application.
+Java SE 8 or later is required. The build has been verified with JDK 17.
 
 Starting the software
 ---------------------
